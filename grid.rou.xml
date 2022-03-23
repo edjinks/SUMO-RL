@@ -1,0 +1,8 @@
+<routes>
+<vType id="car" vClass="passenger" length="5" accel="10000" decel="10000" sigma="0" maxSpeed="10" speedmode="32" color="0,255,255"
+   jmIgnoreKeepClearTime="0"
+   jmIgnoreFoeProb="1"
+   jmIgnoreIgnoreFoeSpeed="1000"
+   jmTimegapMinor="0" />
+
+</routes>
