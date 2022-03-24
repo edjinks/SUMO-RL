@@ -8,7 +8,8 @@ rows = [stringHelper(r) for r in rows]
 columns = set([x for x in itertools.combinations(["O", "1"]*4, 4)])
 columns = [stringHelper(r) for r in columns]
 
-4bitDirectionState = x = set([i for i in itertools.permutations(["0","1","2","3","4"]*3, 3)])
+columns = set([i for i in itertools.permutations(["0","1","2","3","4"]*3, 3)])
+
 
 
 df = pd.DataFrame(0, columns=columns, index=rows)
