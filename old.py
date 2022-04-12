@@ -15,11 +15,10 @@ import itertools
 import matplotlib.pyplot as plt
 
 
-EPISODES = 5000
+EPISODES = 50
 LEARNING_RATE = 0.2
 DISCOUNT_FACTOR = 0.5
-EGOTISTS = []
-PROSOCIAL = []
+
 
 # we need to import some python modules from the $SUMO_HOME/tools directory
 if 'SUMO_HOME' in os.environ:
@@ -42,30 +41,32 @@ def get_options():
 
 def network_creator():
     routeNames = []
-    vehNames = []
     for startEdgeIdx in range(4,8):
         for endEdgeIdx in range(0,4):
             if startEdgeIdx != endEdgeIdx+4:
                 startEdge = str(startEdgeIdx)
                 endEdge = str(endEdgeIdx)
                 name = startEdge+endEdge
-                #print("Creating", name, " route")
                 traci.route.add(routeID=name, edges=[str(startEdge), str(endEdge)])
                 routeNames.append(name)
-                #traci.vehicle.add(vehName, name, "car")
-    for i in range(50):
-        vehName = "rl_"+str(i)
+    return routeNames
+
+def vehAdder(routeNames, numEgoists, numProsocialists):
+    for i in range(numEgoists):
+        vehName = "EGO_vl"+str(i)
         name = np.random.choice(routeNames)
         traci.vehicle.add(vehName, name, "car")
-        EGOTISTS.append(vehName)
-                #print("Added: Vehicle", vehName, ", Route ", name)
+    for j in range(numProsocialists):
+        vehName = "PRO_vl"+str(j)
+        name = np.random.choice(routeNames)
+        traci.vehicle.add(vehName, name, "car")
 
 def computeEgotistReward(veh_id, action):
     reward = 0
     ownWait = traci.vehicle.getWaitingTime(veh_id)
-    reward = 100-(ownWait**2) #penalises long waittimes quadratically
+    reward = 10-(ownWait**2) #penalises long waittimes quadratically
     if action == "1":
-        reward = reward*20
+        reward = abs(reward)*20
     else:
         reward = reward/2
     #reward action = GO
@@ -76,23 +77,29 @@ def computeEgotistReward(veh_id, action):
 def computeProsocialReward():
     reward = 0
     vehicles = traci.vehicle.getIDList()
-    #maximin the disparity between min and max waitime so everyone is moving at similar speeds
+    totalWait = 0
+    totalSpeed = 0
+    waits = []
     for vehicle in vehicles:
+        wait = traci.vehicle.getWaitingTime(vehicle)
+        waits.append(wait)
         totalWait += traci.vehicle.getWaitingTime(vehicle)
         totalSpeed += traci.vehicle.getSpeed(vehicle)
-    reward = totalSpeed
-    reward -= totalWait
+    var = np.var(waits)
+    reward -= var
+    reward += totalSpeed/len(vehicles)
+    reward -= totalWait/len(vehicles)
     return reward
-
-
 
 def computeReward(agent, action):
     #calculate reward
     reward = 0
-    if agent in EGOTISTS:
+    if 'EGO' in agent:
         reward += computeEgotistReward(agent, action)
-    if agent in PROSOCIAL:
+    elif 'PRO' in agent:
         reward += computeProsocialReward()
+    else:
+        print('UNIDENTIFIABLE AGENT')
 
     collisions = traci.simulation.getCollidingVehiclesNumber()
     teleport = traci.simulation.getStartingTeleportNumber()
@@ -115,19 +122,15 @@ def getRandomActions(state):
     return stringHelper(actions)
 
 def epsilonDecay(episode):
-    #epsilon = 0.6
     START_DECAY = 0.6
-
     END_DECAY = 0.1
     epsilon = max(((EPISODES-episode)/EPISODES)*START_DECAY, END_DECAY)
-    # epsilon = epsilon/(END_DECAY-START_DECAY)
     return epsilon
 
 def estimateNewStates(states, actions):
     leadersAtJunctions = getLeadersAtJunctions(getLaneLeaders())
     estimatedLeadersAtJunction = {}
     agentToOldAgentDict = {}
-    #lanes = ['4_0', '5_0', '6_0', '7_0']
     for lane in leadersAtJunctions.keys():
         leader = leadersAtJunctions[lane]
         if actions[leader] == "1":
@@ -139,8 +142,6 @@ def estimateNewStates(states, actions):
         if actions[leader] == "0":
             estimatedLeadersAtJunction.update({lane:leader})
             agentToOldAgentDict.update({leader:leader})
-        #if no actipn for lane check leader wont have arrived
-            
     estimatedLeadersAtJunction = {k: v for k, v in estimatedLeadersAtJunction.items() if v}
     newStates = getStates(estimatedLeadersAtJunction)
 
@@ -152,22 +153,19 @@ def estimateNewStates(states, actions):
     return oldAgentsNewStates
 
 
-
 def update_Q_value(agent, state, action, new_state, q_table):
     current_q = q_table[state][action]
     best_predicted_q = q_table[new_state].max()
     new_q = (1-LEARNING_RATE)*current_q + LEARNING_RATE*(computeReward(agent, action)+DISCOUNT_FACTOR*best_predicted_q)
     q_table[state][action] = new_q
     return q_table
-    
 
 def init_Q_table():
     rows = ["0", "1"]
-    columns = set([i for i in itertools.permutations(["0","1","2","3","4"]*4, 4)])
-    columns = [stringHelper(r) for r in columns]
+    states = list(itertools.product(*[[1,2,3], [0,2,3,4], [0,1,3,4], [0,1,2,4]]))
+    columns = [''.join([str(i) for i in state]) for state in states]
     df = pd.DataFrame(0, columns=columns, index=rows)
     return df
-
 
 def arrayHelper(actions):
     return [char for char in actions]
@@ -188,7 +186,6 @@ def recurisveLaneLeader(lane):
             return vehicle
 
 def getLaneLeaders():
-    #lanes = traci.lane.getIDList()
     leaders = {}
     for lane in  ['4_0', '5_0', '6_0', '7_0']:
         leader = recurisveLaneLeader(lane)
@@ -290,10 +287,6 @@ def doActions(actions):
             traci.vehicle.setSpeedMode(veh, 32)
             traci.vehicle.setSpeed(veh, 10)
 
-def waitTimeVariationAnalysis():
-    pass
-
-
 def pltResults(steps, waitingTime):
     x = np.array([x for x in range(0,len(waitingTime))])
     y = np.array(steps)
@@ -309,31 +302,24 @@ def pltResults(steps, waitingTime):
     plt.tight_layout()
     plt.show()
 
-def pltCummulativeReward(cummulativeReward):
-    plt.plot(cummulativeReward)
-    plt.show()
-
 #traCI control loop
 def run():
     steps = []
     waitingTime = []
-    #cummulativeReward = [0]
+    collisions = []
     dataFrame = init_Q_table()
     print(dataFrame)
     for episode in range(EPISODES):
         print(dataFrame)
         epsilon = epsilonDecay(episode)
-        EGOTISTS = []
-        PROSOCIAL = []
-        print("EPISODE: ", episode, "/", EPISODES, " EPSILON: ", epsilon, " LEARNING RATE: ", LEARNING_RATE)
+        print("EPISODE: ", episode+1, "/", EPISODES, " EPSILON: ", epsilon, " LEARNING RATE: ", LEARNING_RATE)
         traci.start([
         sumoBinary, "-c", "grid.sumocfg", "--tripinfo-output", "tripinfo.xml", "--no-warnings"
         ])
         step = 0
         #q = []
-        network_creator() #adds vehicles and creates routes
+        vehAdder(network_creator() , 50, 0)
         traci.simulationStep()
-        
         while traci.simulation.getMinExpectedNumber() > 0:
             traci.simulationStep()
             leaders = getLaneLeaders()
@@ -342,19 +328,18 @@ def run():
             #q = firstComeFirstServed(q)
             states = getStates(leadersAtJunction)
             actions, dataFrame = computeRLActions(states, dataFrame, epsilon)
-            #cummulativeReward.append(cummulativeReward[-1]+computeReward())
             doActions(actions)
             step += 1
         steps.append(step)
+        collisions.append(traci.simulation.getCollidingVehiclesNumber())
         waitingTime.append(traci.simulation.getTime())
-        traci.close()
-        sys.stdout.flush()
+        traci.close() 
+        #sys.stdout.flush()
     dataFrame.to_csv("q_table.csv")
     print(dataFrame)
     print(steps)
     print(waitingTime)
-   # pltCummulativeReward(cummulativeReward)
-    pltResults(steps, waitingTime)
+    pltResults(collisions, waitingTime)
   
 
 # main entry point
@@ -365,8 +350,4 @@ if __name__ == "__main__":
         sumoBinary = checkBinary('sumo')
     else:
         sumoBinary = checkBinary('sumo-gui')
-    # traci starts sumo as a subprocess and then this script connects and runs
-    # traci.start([
-    #     sumoBinary, "-c", "grid.sumocfg", "--tripinfo-output", "tripinfo.xml"
-    # ])
     run()
