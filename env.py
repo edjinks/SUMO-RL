@@ -32,17 +32,16 @@ def addVehicles(routeNames, numEgoists, numProsocialists):
         traci.vehicle.setStop(veh, edgeID=edge, laneIndex=0, pos=90, duration=1) #stops for 1 step at junction to make decision/detect being leader at junction
 
 
-def computeEgotistReward(veh_id, action):
+def computeEgotistReward(veh_id):
     reward = 0
     ownWait = traci.vehicle.getWaitingTime(veh_id)
-    reward = 10-(ownWait**2) #penalises long waittimes quadratically
-    if action == "1":
-        reward = abs(reward)*20
+    #reward = 10-(ownWait**2) #penalises long waittimes quadratically
+    reward -= ownWait
+    collisionIDs = traci.simulation.getCollidingVehiclesIDList()
+    if veh_id in collisionIDs:
+        reward -= 500
     else:
-        reward = reward/2
-    #reward action = GO
-    #penalise action = STOP
-    #penalise heavily a collision
+        reward += 10
     return reward
 
 def computeProsocialReward():
@@ -54,28 +53,25 @@ def computeProsocialReward():
     for vehicle in vehicles:
         wait = traci.vehicle.getWaitingTime(vehicle)
         waits.append(wait)
-        totalWait += traci.vehicle.getWaitingTime(vehicle)
+        totalWait += wait
         totalSpeed += traci.vehicle.getSpeed(vehicle)
-    var = np.var(waits)
-    reward -= var
+    #var = np.var(waits)
+    reward -= max(waits)-totalWait/len(vehicles)
     reward += totalSpeed/len(vehicles)
     reward -= totalWait/len(vehicles)
+    collisionNumber = traci.simulation.getCollidingVehiclesNumber()
+    if collisionNumber == 0:
+        reward += 10
+    reward -= 250*collisionNumber
     return reward
 
-def computeReward(agent, action):
+def computeReward(agent):
     #calculate reward
     reward = 0
     if 'EGO' in agent:
-        reward += computeEgotistReward(agent, action)
+        reward += computeEgotistReward(agent)
     elif 'PRO' in agent:
         reward += computeProsocialReward()
-    collisions = traci.simulation.getCollidingVehiclesNumber()
-    teleport = traci.simulation.getStartingTeleportNumber()
-    reward += collisions*-5000 + teleport*-2000
-    if collisions == 0:
-        reward += 100
-    else:
-        print('COLLISION')
     return reward
 
 def stringHelper(state):
@@ -120,12 +116,14 @@ def estimateNewStates(actions):
         oldAgentsNewStates.update({oldAgent:state})
     return oldAgentsNewStates
 
-def update_Q_value(agent, state, action, new_state, q_table, params):
+def update_Q_value(agent, state, action, new_state, q_table, params, rewards):
     current_q = q_table[state][action]
     best_predicted_q = q_table[new_state].max()
     LEARNING_RATE = params['LEARNING_RATE']
-    q_table[state][action] = (1-LEARNING_RATE)*current_q + LEARNING_RATE*(computeReward(agent, action)+params['DISCOUNT_FACTOR']*best_predicted_q)
-    return q_table
+    reward = computeReward(agent)
+    rewards += reward
+    q_table[state][action] = (1-LEARNING_RATE)*current_q + LEARNING_RATE*(reward+params['DISCOUNT_FACTOR']*best_predicted_q)
+    return q_table, rewards
 
 def init_Q_table():
     rows = ["0", "1"]
@@ -156,7 +154,7 @@ def getLaneLeaders():
             leaders.update({lane:leader})
     return leaders
 
-def computeRLActions(states, q_table, epsilon, params):
+def computeRLActions(states, q_table, epsilon, params, rewards):
     actions = {}
     for agent in states.keys():
         exploreExploit = np.random.random()
@@ -173,8 +171,8 @@ def computeRLActions(states, q_table, epsilon, params):
                 new_state = states[agent]
             else:
                 new_state = new_states[agent]
-            q_table = update_Q_value(agent, states[agent], action, new_state, q_table, params)    
-    return actions, q_table
+            q_table, rewards = update_Q_value(agent, states[agent], action, new_state, q_table, params, rewards)    
+    return actions, q_table, rewards
 
 def getStates(leadersAtJunction):
     states = {}
@@ -240,9 +238,11 @@ def run(params, gui=False):
     steps = []
     waitingTime = []
     collisions = []
+    episodicRewards = []
     dataFrame = init_Q_table()
 
     for episode in range(int(params['EPISODES'])):
+        rewards = 0
         traci.start([sumoBinary, "-c", "network/grid.sumocfg", "--no-warnings"])
         epsilon = epsilonDecay(params, episode)
         print("EPISODE: ", episode+1, "/", params['EPISODES'], " EPSILON: ", epsilon, " LEARNING RATE: ", params['LEARNING_RATE'])
@@ -253,12 +253,18 @@ def run(params, gui=False):
         while traci.simulation.getMinExpectedNumber() > 0:
             traci.simulationStep()
             states = getStates(getLeadersAtJunctions(getLaneLeaders()))
-            actions, dataFrame = computeRLActions(states, dataFrame, epsilon, params)
+            actions, dataFrame, rewards = computeRLActions(states, dataFrame, epsilon, params, rewards)
             doActions(actions)
+
+            #vehicles = traci.vehicle.getIDList()
+            
             step += 1
+        #averageWaiting = AllaverageWaitPerStep/
+        averageReward = rewards/(params['EGOISTS']+params['PROSOCIALISTS'])
+        episodicRewards.append(averageReward)
         steps.append(step)
-        collisions.append(traci.simulation.getCollidingVehiclesNumber())
-        waitingTime.append(traci.simulation.getTime())
+        #collisions.append(traci.simulation.getCollidingVehiclesNumber())
+        #waitingTime.append(traci.simulation.getTime())
         traci.close() 
-    return dataFrame
+    return dataFrame, episodicRewards, steps
   

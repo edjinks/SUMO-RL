@@ -1,8 +1,5 @@
 import env
-import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
-
+import plotter
 
 # EXPERIMENT SETUPS
 # 1) 50 vehicles, all EGOISTS, random routes, til CONVERGENCE
@@ -11,23 +8,36 @@ import matplotlib.pyplot as plt
 # 4) FCFS Time Taken
 # 5) Give Way To Right 
 
-
 # 1)
 experiment_params = {
     'EGOISTS': 100,
     'PROSOCIALISTS': 0,
     'START_EPSILON_DECAY':0.8,
     'END_EPSILON_DECAY':0.1,
-    'EPISODES':50,
+    'EPISODES':5,
     'LEARNING_RATE':0.2,
     'DISCOUNT_FACTOR':0.5,
 }
 
-policy = env.run(experiment_params)
-print(policy)
+policy, rewards, stepsPerEpisode = env.run(experiment_params)
 policy.to_csv("results/experiment1.csv")
+plotter.pltRewardAndSteps(rewards, stepsPerEpisode)
 
 # 2)
+experiment_params = {
+    'EGOISTS': 0,
+    'PROSOCIALISTS': 100,
+    'START_EPSILON_DECAY':0.8,
+    'END_EPSILON_DECAY':0.1,
+    'EPISODES':5,
+    'LEARNING_RATE':0.2,
+    'DISCOUNT_FACTOR':0.5,
+}
+
+policy2, rewards2, stepsPerEpisode2 = env.run(experiment_params)
+policy2.to_csv("results/experiment2.csv")
+
+plotter.pltRewardAndSteps(rewards, stepsPerEpisode)
 
 # 3)
 
@@ -53,19 +63,3 @@ policy.to_csv("results/experiment1.csv")
 #         vehAction = "1"
 #     return vehAction
 
-
-############RESULTS PLOTTING######################
-def pltResults(steps, waitingTime):
-    x = np.array([x for x in range(0,len(waitingTime))])
-    y = np.array(steps)
-    y2 = np.array(waitingTime)
-    print(len(x), len(y), len(y2))
-    m, b = np.polyfit(x, y, 1)
-    m2, b2 = np.polyfit(x, y2, 1)
-    plt.figure(figsize=(20, 5))
-    plt.plot(x, y, 'o')
-    plt.plot(x, y2, 'o')
-    plt.plot(x, m*x+b)
-    plt.plot(x, m2*x+b2)
-    plt.tight_layout()
-    plt.show()
