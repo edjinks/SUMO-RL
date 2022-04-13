@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 #netgenerate --g --grid.number=4 -L=1 --grid.length=100 --grid.attach-length 100 --lefthand
 from sumolib import checkBinary
-import optparse
 import numpy as np
 import pandas as pd
 import itertools
@@ -20,15 +19,18 @@ def route_creator():
                 routeNames.append(name)
     return routeNames
 
-def vehAdder(routeNames, numEgoists, numProsocialists):
+def addVehicles(routeNames, numEgoists, numProsocialists):
+    vehNames = []
     for i in range(numEgoists):
-        vehName = "EGO_vl"+str(i)
-        name = np.random.choice(routeNames)
-        traci.vehicle.add(vehName, name, "car")
+        vehNames.append("EGO_vl"+str(i))
     for j in range(numProsocialists):
-        vehName = "PRO_vl"+str(j)
-        name = np.random.choice(routeNames)
-        traci.vehicle.add(vehName, name, "car")
+        vehNames.append("PRO_vl"+str(j))
+    for veh in vehNames:
+        routeName = np.random.choice(routeNames)
+        edge = str(list(routeName)[0])
+        traci.vehicle.add(veh, routeName, "car")
+        traci.vehicle.setStop(veh, edgeID=edge, laneIndex=0, pos=90, duration=1) #stops for 1 step at junction to make decision/detect being leader at junction
+
 
 def computeEgotistReward(veh_id, action):
     reward = 0
@@ -67,14 +69,13 @@ def computeReward(agent, action):
         reward += computeEgotistReward(agent, action)
     elif 'PRO' in agent:
         reward += computeProsocialReward()
-    else:
-        print('UNIDENTIFIABLE AGENT')
-
     collisions = traci.simulation.getCollidingVehiclesNumber()
     teleport = traci.simulation.getStartingTeleportNumber()
     reward += collisions*-5000 + teleport*-2000
     if collisions == 0:
         reward += 100
+    else:
+        print('COLLISION')
     return reward
 
 def stringHelper(state):
@@ -137,8 +138,7 @@ def getLeadersAtJunctions(leaders):
     leadersAtJunction = {}
     for lane in leaders:
             leader = leaders[lane]
-            if traci.vehicle.getLanePosition(leader) > 83 and traci.vehicle.getLaneID(leader) in ['4_0', '5_0', '6_0', '7_0']: #trial replacement of LeadersATJunction()
-                traci.vehicle.setSpeed(leader, 0)
+            if traci.vehicle.isStopped(leader):
                 leadersAtJunction.update({lane:leader})
     return leadersAtJunction
 
@@ -150,7 +150,7 @@ def recurisveLaneLeader(lane):
 
 def getLaneLeaders():
     leaders = {}
-    for lane in  ['4_0', '5_0', '6_0', '7_0']:
+    for lane in  ['4_0', '5_0', '7_0', '6_0']:
         leader = recurisveLaneLeader(lane)
         if leader:
             leaders.update({lane:leader})
@@ -160,7 +160,7 @@ def computeRLActions(states, q_table, epsilon, params):
     actions = {}
     for agent in states.keys():
         exploreExploit = np.random.random()
-        if exploreExploit < epsilon: #Choose highest q value from table for this state 
+        if exploreExploit > epsilon: #Choose highest q value from table for this state 
             col = q_table[states[agent]]
             action = col.idxmax()
         else:
@@ -243,12 +243,12 @@ def run(params, gui=False):
     dataFrame = init_Q_table()
 
     for episode in range(int(params['EPISODES'])):
-        traci.start([sumoBinary, "-c", "grid.sumocfg", "--tripinfo-output", "tripinfo.xml", "--no-warnings"])
+        traci.start([sumoBinary, "-c", "network/grid.sumocfg", "--no-warnings"])
         epsilon = epsilonDecay(params, episode)
         print("EPISODE: ", episode+1, "/", params['EPISODES'], " EPSILON: ", epsilon, " LEARNING RATE: ", params['LEARNING_RATE'])
         
         step = 0
-        vehAdder(route_creator(), params['EGOISTS'], params['PROSOCIALISTS'])
+        addVehicles(route_creator(), params['EGOISTS'], params['PROSOCIALISTS'])
         traci.simulationStep()
         while traci.simulation.getMinExpectedNumber() > 0:
             traci.simulationStep()

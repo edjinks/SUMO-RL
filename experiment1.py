@@ -13,22 +13,23 @@ import matplotlib.pyplot as plt
 
 
 # 1)
-PARAMS = {
-    'EGOISTS': 50,
+experiment_params = {
+    'EGOISTS': 100,
     'PROSOCIALISTS': 0,
-    'START_EPSILON_DECAY':0.6,
+    'START_EPSILON_DECAY':0.8,
     'END_EPSILON_DECAY':0.1,
-    'EPISODES':5,
+    'EPISODES':50,
     'LEARNING_RATE':0.2,
     'DISCOUNT_FACTOR':0.5,
 }
 
-policy = env.run(PARAMS)
+policy = env.run(experiment_params)
 print(policy)
-policy.to_csv("q_table.csv")
+policy.to_csv("results/experiment1.csv")
 
+# 2)
 
-
+# 3)
 
 # 4)
 
