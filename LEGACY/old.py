@@ -284,6 +284,7 @@ def giveWayToRight(state):
 def doActions(actions):
     for veh in actions.keys():
         if actions[veh] == "1":
+            print('works')
             traci.vehicle.setSpeedMode(veh, 32)
             traci.vehicle.setSpeed(veh, 10)
 
@@ -314,7 +315,7 @@ def run():
         epsilon = epsilonDecay(episode)
         print("EPISODE: ", episode+1, "/", EPISODES, " EPSILON: ", epsilon, " LEARNING RATE: ", LEARNING_RATE)
         traci.start([
-        sumoBinary, "-c", "grid.sumocfg", "--tripinfo-output", "tripinfo.xml", "--no-warnings"
+        sumoBinary, "-c", "network/grid.sumocfg", "--tripinfo-output", "tripinfo.xml", "--no-warnings"
         ])
         step = 0
         #q = []
@@ -329,6 +330,8 @@ def run():
             states = getStates(leadersAtJunction)
             actions, dataFrame = computeRLActions(states, dataFrame, epsilon)
             doActions(actions)
+            if traci.simulation.getCollidingVehiclesNumber() != 0:
+                print('COLLISION')
             step += 1
         steps.append(step)
         collisions.append(traci.simulation.getCollidingVehiclesNumber())

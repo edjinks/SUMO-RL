@@ -5,9 +5,9 @@ import numpy as np
 import pandas as pd
 import itertools
 import traci
+import sumolib
 
-
-def route_creator():
+def route_creator(add=True):
     routeNames = []
     for startEdgeIdx in range(4,8):
         for endEdgeIdx in range(0,4):
@@ -15,33 +15,41 @@ def route_creator():
                 startEdge = str(startEdgeIdx)
                 endEdge = str(endEdgeIdx)
                 name = startEdge+endEdge
-                traci.route.add(routeID=name, edges=[str(startEdge), str(endEdge)])
+                if add:
+                    traci.route.add(routeID=name, edges=[str(startEdge), str(endEdge)])
                 routeNames.append(name)
     return routeNames
 
-def addVehicles(routeNames, numEgoists, numProsocialists):
+def addVehicles(routeNames, numEgoists, numProsocialists, routeOrder = None):
     vehNames = []
     for i in range(numEgoists):
         vehNames.append("EGO_vl"+str(i))
     for j in range(numProsocialists):
         vehNames.append("PRO_vl"+str(j))
-    for veh in vehNames:
-        routeName = np.random.choice(routeNames)
+    for j in range(len(vehNames)):
+        if routeOrder:
+            routeName = routeOrder[j]
+        else:
+            routeName = np.random.choice(routeNames)
         edge = str(list(routeName)[0])
-        traci.vehicle.add(veh, routeName, "car")
-        traci.vehicle.setStop(veh, edgeID=edge, laneIndex=0, pos=90, duration=1) #stops for 1 step at junction to make decision/detect being leader at junction
+        traci.vehicle.add(vehNames[j], routeName, "car")
+        traci.vehicle.setStop(vehNames[j], edgeID=edge, laneIndex=0, pos=90, duration=1) #stops for 1 step at junction to make decision/detect being leader at junction
 
 
-def computeEgotistReward(veh_id):
+def computeEgotistReward(veh_id, action):
     reward = 0
-    ownWait = traci.vehicle.getWaitingTime(veh_id)
+    ownWait = traci.vehicle.getAccumulatedWaitingTime(veh_id)
     #reward = 10-(ownWait**2) #penalises long waittimes quadratically
     reward -= ownWait
     collisionIDs = traci.simulation.getCollidingVehiclesIDList()
+    if action == '1':
+        reward += 100
     if veh_id in collisionIDs:
+        print('COLLISION FOR AGETN')
+        reward -= 5000
+    collisionNumber = traci.simulation.getCollidingVehiclesNumber()
+    if collisionNumber != 0:
         reward -= 500
-    else:
-        reward += 10
     return reward
 
 def computeProsocialReward():
@@ -51,7 +59,7 @@ def computeProsocialReward():
     totalSpeed = 0
     waits = []
     for vehicle in vehicles:
-        wait = traci.vehicle.getWaitingTime(vehicle)
+        wait = traci.vehicle.getAccumulatedWaitingTime(vehicle)
         waits.append(wait)
         totalWait += wait
         totalSpeed += traci.vehicle.getSpeed(vehicle)
@@ -60,18 +68,18 @@ def computeProsocialReward():
     reward += totalSpeed/len(vehicles)
     reward -= totalWait/len(vehicles)
     collisionNumber = traci.simulation.getCollidingVehiclesNumber()
+    #print(collisionNumber, traci.simulation.getStartingTeleportNumber())
     if collisionNumber == 0:
         reward += 10
-    reward -= 250*collisionNumber
+    reward -= 5000*collisionNumber
     return reward
 
-def computeReward(agent):
+def computeReward(agent, action):
     #calculate reward
-    reward = 0
     if 'EGO' in agent:
-        reward += computeEgotistReward(agent)
+        reward = computeEgotistReward(agent, action)
     elif 'PRO' in agent:
-        reward += computeProsocialReward()
+        reward = computeProsocialReward()
     return reward
 
 def stringHelper(state):
@@ -120,7 +128,7 @@ def update_Q_value(agent, state, action, new_state, q_table, params, rewards):
     current_q = q_table[state][action]
     best_predicted_q = q_table[new_state].max()
     LEARNING_RATE = params['LEARNING_RATE']
-    reward = computeReward(agent)
+    reward = computeReward(agent, action)
     rewards += reward
     q_table[state][action] = (1-LEARNING_RATE)*current_q + LEARNING_RATE*(reward+params['DISCOUNT_FACTOR']*best_predicted_q)
     return q_table, rewards
@@ -136,7 +144,7 @@ def getLeadersAtJunctions(leaders):
     leadersAtJunction = {}
     for lane in leaders:
             leader = leaders[lane]
-            if traci.vehicle.isStopped(leader):
+            if traci.vehicle.getSpeed(leader)==0:
                 leadersAtJunction.update({lane:leader})
     return leadersAtJunction
 
@@ -224,10 +232,27 @@ def getStates(leadersAtJunction):
     return states
 
 def doActions(actions):
+    vehToGo = -1
+    if sum([int(a) for a in actions.values()]) == 0: #all say stationary
+        vehToGo = np.random.randint(0,3)
+    count = 0
     for veh in actions.keys():
-        if actions[veh] == "1":
+        if count == vehToGo:
+            actions[veh] = '1'
+        if actions[veh] == '1':
             traci.vehicle.setSpeedMode(veh, 32)
             traci.vehicle.setSpeed(veh, 10)
+        else:
+            traci.vehicle.setSpeed(veh, 0)
+        count += 1
+
+def outputParse(outFilename):
+    totalWaitTime = 0
+    count = 0
+    for v in sumolib.xml.parse(outFilename, 'tripinfo'):
+        count += 1
+        totalWaitTime += float(v.waitingTime)
+    return totalWaitTime/count
 
 
 def run(params, gui=False):
@@ -236,14 +261,14 @@ def run(params, gui=False):
         sumoBinary = checkBinary('sumo-gui')
 
     steps = []
-    waitingTime = []
-    collisions = []
     episodicRewards = []
+    episodeAvgWaitCount = []
     dataFrame = init_Q_table()
 
     for episode in range(int(params['EPISODES'])):
         rewards = 0
-        traci.start([sumoBinary, "-c", "network/grid.sumocfg", "--no-warnings"])
+        outFileName = 'out_'+str(params['EGOISTS'])+'.xml'
+        traci.start([sumoBinary, "-c", "network/grid.sumocfg", "--no-warnings", "--tripinfo-output", outFileName])
         epsilon = epsilonDecay(params, episode)
         print("EPISODE: ", episode+1, "/", params['EPISODES'], " EPSILON: ", epsilon, " LEARNING RATE: ", params['LEARNING_RATE'])
         
@@ -255,16 +280,11 @@ def run(params, gui=False):
             states = getStates(getLeadersAtJunctions(getLaneLeaders()))
             actions, dataFrame, rewards = computeRLActions(states, dataFrame, epsilon, params, rewards)
             doActions(actions)
-
-            #vehicles = traci.vehicle.getIDList()
-            
             step += 1
-        #averageWaiting = AllaverageWaitPerStep/
         averageReward = rewards/(params['EGOISTS']+params['PROSOCIALISTS'])
         episodicRewards.append(averageReward)
         steps.append(step)
-        #collisions.append(traci.simulation.getCollidingVehiclesNumber())
-        #waitingTime.append(traci.simulation.getTime())
         traci.close() 
-    return dataFrame, episodicRewards, steps
+        episodeAvgWaitCount.append(outputParse(outFileName))
+    return dataFrame, episodicRewards, steps, episodeAvgWaitCount
   

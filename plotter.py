@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
-
+import pandas as pd
 
 ############RESULTS PLOTTING######################
 def pltRewardAndSteps(rewards, steps):
@@ -20,3 +20,30 @@ def pltRewardAndSteps(rewards, steps):
     ax.plot(x, m*x+b, color='red')
     ax2.plot(x, m2*x+b2, color='blue')
     plt.show()
+
+def plotArr(array, title):
+    x = np.array([x for x in range(0,len(array))])
+    y = np.array(array)
+
+    plt.plot(x, y, 'o')
+    m, b = np.polyfit(x, y, 1)
+    plt.plot(x, m*x+b)
+    plt.title(title)
+    plt.show()
+
+def plotHistogram(arr, title):
+    bins = 50
+    plt.hist(arr, bins)
+    plt.title(title)
+    plt.show()
+
+def compareHistograms(arr1, arr2, title1, title2):
+    #bins = 100
+    bins = np.histogram(np.hstack((arr1,arr2)), bins=100)[1]
+    plt.hist(arr1, bins, alpha=0.5, label=title1)
+    plt.hist(arr2, bins, alpha=0.5, label=title2)
+    plt.legend(loc='upper right')
+    plt.title(title1+' & '+title2)
+    plt.show()
+
+
