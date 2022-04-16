@@ -33,7 +33,7 @@ def addVehicles(routeNames, numEgoists, numProsocialists, routeOrder = None):
             routeName = np.random.choice(routeNames)
         edge = str(list(routeName)[0])
         traci.vehicle.add(vehNames[j], routeName, "car")
-        traci.vehicle.setStop(vehNames[j], edgeID=edge, laneIndex=0, pos=90, duration=1) #stops for 1 step at junction to make decision/detect being leader at junction
+        traci.vehicle.setStop(vehNames[j], edgeID=edge, laneIndex=0, pos=90, duration=1000) #stops for 1 step at junction to make decision/detect being leader at junction
 
 
 def computeEgotistReward(veh_id, action):
@@ -52,7 +52,7 @@ def computeEgotistReward(veh_id, action):
         reward -= 500
     return reward
 
-def computeProsocialReward():
+def computeProsocialReward(actions):
     reward = 0
     vehicles = traci.vehicle.getIDList()
     totalWait = 0
@@ -63,6 +63,7 @@ def computeProsocialReward():
         waits.append(wait)
         totalWait += wait
         totalSpeed += traci.vehicle.getSpeed(vehicle)
+    
     #var = np.var(waits)
     reward -= max(waits)-totalWait/len(vehicles)
     reward += totalSpeed/len(vehicles)
@@ -71,15 +72,16 @@ def computeProsocialReward():
     #print(collisionNumber, traci.simulation.getStartingTeleportNumber())
     if collisionNumber == 0:
         reward += 10
+    reward = reward*(1+ sum([int(a) for a in actions.values()])/len(actions.items()))
     reward -= 5000*collisionNumber
     return reward
 
-def computeReward(agent, action):
+def computeReward(agent, actions):
     #calculate reward
     if 'EGO' in agent:
-        reward = computeEgotistReward(agent, action)
+        reward = computeEgotistReward(agent, actions[agent])
     elif 'PRO' in agent:
-        reward = computeProsocialReward()
+        reward = computeProsocialReward(actions)
     return reward
 
 def stringHelper(state):
@@ -124,11 +126,12 @@ def estimateNewStates(actions):
         oldAgentsNewStates.update({oldAgent:state})
     return oldAgentsNewStates
 
-def update_Q_value(agent, state, action, new_state, q_table, params, rewards):
+def update_Q_value(agent, state, actions, new_state, q_table, params, rewards):
+    action = actions[agent]
     current_q = q_table[state][action]
     best_predicted_q = q_table[new_state].max()
     LEARNING_RATE = params['LEARNING_RATE']
-    reward = computeReward(agent, action)
+    reward = computeReward(agent, actions)
     rewards += reward
     q_table[state][action] = (1-LEARNING_RATE)*current_q + LEARNING_RATE*(reward+params['DISCOUNT_FACTOR']*best_predicted_q)
     return q_table, rewards
@@ -144,7 +147,7 @@ def getLeadersAtJunctions(leaders):
     leadersAtJunction = {}
     for lane in leaders:
             leader = leaders[lane]
-            if traci.vehicle.getSpeed(leader)==0:
+            if traci.vehicle.isStopped(leader):
                 leadersAtJunction.update({lane:leader})
     return leadersAtJunction
 
@@ -179,7 +182,7 @@ def computeRLActions(states, q_table, epsilon, params, rewards):
                 new_state = states[agent]
             else:
                 new_state = new_states[agent]
-            q_table, rewards = update_Q_value(agent, states[agent], action, new_state, q_table, params, rewards)    
+            q_table, rewards = update_Q_value(agent, states[agent], actions, new_state, q_table, params, rewards)    
     return actions, q_table, rewards
 
 def getStates(leadersAtJunction):
@@ -234,16 +237,15 @@ def getStates(leadersAtJunction):
 def doActions(actions):
     vehToGo = -1
     if sum([int(a) for a in actions.values()]) == 0: #all say stationary
-        vehToGo = np.random.randint(0,3)
+        vehToGo = np.random.randint(0,4)
     count = 0
     for veh in actions.keys():
         if count == vehToGo:
             actions[veh] = '1'
         if actions[veh] == '1':
-            traci.vehicle.setSpeedMode(veh, 32)
-            traci.vehicle.setSpeed(veh, 10)
-        else:
-            traci.vehicle.setSpeed(veh, 0)
+            traci.vehicle.resume(veh)
+        #else:
+        #    traci.vehicle.setSpeed(veh, 0)
         count += 1
 
 def outputParse(outFilename):
@@ -268,7 +270,7 @@ def run(params, gui=False):
     for episode in range(int(params['EPISODES'])):
         rewards = 0
         outFileName = 'out_'+str(params['EGOISTS'])+'.xml'
-        traci.start([sumoBinary, "-c", "network/grid.sumocfg", "--no-warnings", "--tripinfo-output", outFileName])
+        traci.start([sumoBinary, "-c", "network/grid.sumocfg", "--no-warnings", "--collision.action", "none", "--tripinfo-output", outFileName])
         epsilon = epsilonDecay(params, episode)
         print("EPISODE: ", episode+1, "/", params['EPISODES'], " EPSILON: ", epsilon, " LEARNING RATE: ", params['LEARNING_RATE'])
         
