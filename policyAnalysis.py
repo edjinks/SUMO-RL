@@ -1,5 +1,3 @@
-from curses import getwin
-from email import policy
 import sumolib
 import pandas as pd
 import traci
@@ -28,9 +26,8 @@ def giveWayToRight(vehNumber, gui=True, routeOrder=None):
     sumoBinary = sumolib.checkBinary('sumo')
     if gui:
         sumoBinary = sumolib.checkBinary('sumo-gui')
-    traci.start([sumoBinary, "-c", "network/grid.sumocfg", "--no-warnings", "--collision.action", 'none', "--tripinfo-output", 'tempOut.xml'])
+    traci.start([sumoBinary, "-c", "network/grid.sumocfg", "--no-warnings", "--collision.action", 'none', "--tripinfo-output", 'temp/Out.xml'])
     routeNames = route_creator()
-
     addVehicles(routeNames, vehNumber, 0, routeOrder)
     traci.simulationStep()
     while traci.simulation.getMinExpectedNumber() > 0:
@@ -51,14 +48,12 @@ def giveWayToRight(vehNumber, gui=True, routeOrder=None):
     return df
 
 
-
 def firstComefirstServed(vehNumber, gui=True, routeOrder=None):
     sumoBinary = sumolib.checkBinary('sumo')
     if gui:
         sumoBinary = sumolib.checkBinary('sumo-gui')
-    traci.start([sumoBinary, "-c", "network/grid.sumocfg", "--no-warnings","--collision.action", "none", "--tripinfo-output", 'tempOut.xml'])
+    traci.start([sumoBinary, "-c", "network/grid.sumocfg", "--no-warnings","--collision.action", "none", "--tripinfo-output", 'temp/Out.xml'])
     routeNames = route_creator()
-
     addVehicles(routeNames, vehNumber, 0, routeOrder)
     queue = []
     traci.simulationStep()
@@ -72,7 +67,7 @@ def firstComefirstServed(vehNumber, gui=True, routeOrder=None):
             traci.vehicle.resume(queue[0])
             queue.pop(0)
     traci.close()
-    policyWait = getWaitTimes('tempOut.xml')
+    policyWait = getWaitTimes('temp/Out.xml')
     df = pd.DataFrame({'wait':policyWait})
     df.to_csv('policyTrials/fcfsOUT.csv')
     return df
@@ -84,7 +79,6 @@ def run(ego_q_table, pro_q_table, policyName, egoVehicleNumber, proVehicleNumber
         sumoBinary = sumolib.checkBinary('sumo-gui')
     traci.start([sumoBinary, "-c", "network/grid.sumocfg", "--no-warnings","--collision.action", "none", "--tripinfo-output", policyName])
     routeNames = route_creator()
-    
     addVehicles(routeNames, egoVehicleNumber, proVehicleNumber, routeOrder)
     traci.simulationStep()
     while traci.simulation.getMinExpectedNumber() > 0:
@@ -96,15 +90,6 @@ def run(ego_q_table, pro_q_table, policyName, egoVehicleNumber, proVehicleNumber
     traci.close() 
 
 
-def singlePolicyRunner(q_table, vehNum, outName, routeOrder=None, gui=False):
-    if routeOrder==None:
-        routeOrder = []
-        routeNames = route_creator(False)
-        for _ in range(vehNum):
-            routeOrder.append(np.random.choice(routeNames))
-    run(q_table, None, outName, vehNum, 0, gui, routeOrder)
-    return routeOrder
-
 def getWaitTimes(file):
     waitTimes = []
     for veh in sumolib.xml.parse(file, 'tripinfo'):
@@ -115,34 +100,33 @@ def getWaitTimes(file):
 def mixedPolicyToWaitTimesCSV(ego_policy_csv, pro_policy_csv, egoNum, proNum, routeOrder=None, gui=False):
     ego_q_table = pd.read_csv(ego_policy_csv)
     pro_q_table = pd.read_csv(pro_policy_csv)
-    if routeOrder==None:
-        routeOrder = []
-        routeNames = route_creator(False)
-        for _ in range(egoNum+proNum):
-            routeOrder.append(np.random.choice(routeNames))
     run(ego_q_table, pro_q_table, 'temp/Out.xml', egoNum, proNum, gui, routeOrder)
     waitTimes = getWaitTimes('temp/Out.xml')
     df = pd.DataFrame({'wait':waitTimes})
     df.to_csv('policyTrials/mixedOUT.csv')
-    return df, routeOrder
+    return df
 
 
 def policyToWaitTimesCSV(policyCSV, vehicles, waitCSVName, routeOrder=None, gui=False):
     policy = pd.read_csv(policyCSV)
-    routeOrder = singlePolicyRunner(policy, vehicles, 'temp/Out.xml', routeOrder, gui)
+    run(policy, None, 'temp/Out.xml', vehicles, 0, gui, routeOrder)
     policyWait = getWaitTimes('temp/Out.xml')
     df = pd.DataFrame({'wait':policyWait})
     df.to_csv(waitCSVName)
-    return df, routeOrder
+    return df
 
-##### FCFS, EGO, PRO, MIXED #####
-vehNumber = 5000
+##### EGO, PRO, MIXED, FCFS, GIVEWAYRIGHT COMPARISON #####
+vehNumber = 5
+routeOrder = []
+routeNames = route_creator(False)
+for _ in range(vehNumber):
+    routeOrder.append(np.random.choice(routeNames))
 
-egoPolicyDF, routeOrder = policyToWaitTimesCSV('policies/egoPolicy.csv', vehNumber, 'policyTrials/egoOUT.csv')
-proPolicyDF, _ = policyToWaitTimesCSV('policies/proPolicy.csv', vehNumber, 'policyTrials/proOUT.csv', routeOrder)
-mixedPolicyDF, _ = mixedPolicyToWaitTimesCSV('policies/egoPolicy.csv', 'policies/proPolicy.csv', int(vehNumber/2), int(vehNumber/2), routeOrder)
+egoPolicyDF = policyToWaitTimesCSV('policies/egoPolicy.csv', vehNumber, 'policyTrials/egoOUT.csv', routeOrder)
+proPolicyDF = policyToWaitTimesCSV('policies/proPolicy.csv', vehNumber, 'policyTrials/proOUT.csv', routeOrder)
+mixedPolicyDF = mixedPolicyToWaitTimesCSV('policies/egoPolicy.csv', 'policies/proPolicy.csv', int(vehNumber/2), int(vehNumber/2), routeOrder)
 fcfsPolicyDF = firstComefirstServed(vehNumber, False, routeOrder)
-gwrDF = giveWayToRight(vehNumber, False)
+gwrDF = giveWayToRight(vehNumber, False, routeOrder)
 
 egoPolicyDF = pd.read_csv('policyTrials/egoOUT.csv')
 proPolicyDF = pd.read_csv('policyTrials/proOUT.csv')
