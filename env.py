@@ -1,11 +1,12 @@
 #!/usr/bin/env python
 #netgenerate --g --grid.number=4 -L=1 --grid.length=100 --grid.attach-length 100 --lefthand
-from sumolib import checkBinary
+
 import numpy as np
 import pandas as pd
 import itertools
 import traci
 import sumolib
+from sumolib import checkBinary  # Checks for the binary in environ vars
 
 def route_creator(add=True):
     routeNames = []
@@ -27,29 +28,24 @@ def addVehicles(routeNames, numEgoists, numProsocialists, routeOrder = None):
     for j in range(numProsocialists):
         vehNames.append("PRO_vl"+str(j))
     for j in range(len(vehNames)):
-        if routeOrder:
-            routeName = routeOrder[j]
+        if routeOrder is not None:
+            routeName = str(routeOrder[j])
         else:
             routeName = np.random.choice(routeNames)
-        edge = str(list(routeName)[0])
+        stopEdge = str(list(routeName)[0])
         traci.vehicle.add(vehNames[j], routeName, "car")
-        traci.vehicle.setStop(vehNames[j], edgeID=edge, laneIndex=0, pos=90, duration=1000) #stops for 1 step at junction to make decision/detect being leader at junction
+        traci.vehicle.setStop(vehNames[j], edgeID=stopEdge, laneIndex=0, pos=90, duration=1000.0) #stops for 1 step at junction to make decision/detect being leader at junction
 
 
 def computeEgotistReward(veh_id, action):
     reward = 0
     ownWait = traci.vehicle.getAccumulatedWaitingTime(veh_id)
-    #reward = 10-(ownWait**2) #penalises long waittimes quadratically
     reward -= ownWait
-    collisionIDs = traci.simulation.getCollidingVehiclesIDList()
     if action == '1':
-        reward += 100
-    if veh_id in collisionIDs:
-        print('COLLISION FOR AGETN')
-        reward -= 5000
+         reward += 100
     collisionNumber = traci.simulation.getCollidingVehiclesNumber()
     if collisionNumber != 0:
-        reward -= 500
+        reward -= 5000
     return reward
 
 def computeProsocialReward(actions):
@@ -63,13 +59,10 @@ def computeProsocialReward(actions):
         waits.append(wait)
         totalWait += wait
         totalSpeed += traci.vehicle.getSpeed(vehicle)
-    
-    #var = np.var(waits)
     reward -= max(waits)-totalWait/len(vehicles)
     reward += totalSpeed/len(vehicles)
     reward -= totalWait/len(vehicles)
     collisionNumber = traci.simulation.getCollidingVehiclesNumber()
-    #print(collisionNumber, traci.simulation.getStartingTeleportNumber())
     if collisionNumber == 0:
         reward += 10
     reward = reward*(1+ sum([int(a) for a in actions.values()])/len(actions.items()))
@@ -77,7 +70,6 @@ def computeProsocialReward(actions):
     return reward
 
 def computeReward(agent, actions):
-    #calculate reward
     if 'EGO' in agent:
         reward = computeEgotistReward(agent, actions[agent])
     elif 'PRO' in agent:
@@ -235,18 +227,10 @@ def getStates(leadersAtJunction):
     return states
 
 def doActions(actions):
-    vehToGo = -1
-    if sum([int(a) for a in actions.values()]) == 0: #all say stationary
-        vehToGo = np.random.randint(0,4)
-    count = 0
     for veh in actions.keys():
-        if count == vehToGo:
-            actions[veh] = '1'
         if actions[veh] == '1':
             traci.vehicle.resume(veh)
-        #else:
-        #    traci.vehicle.setSpeed(veh, 0)
-        count += 1
+            traci.vehicle.setSpeedMode(veh, 32)
 
 def outputParse(outFilename):
     totalWaitTime = 0
@@ -270,7 +254,7 @@ def run(params, gui=False):
     for episode in range(int(params['EPISODES'])):
         rewards = 0
         outFileName = 'out_'+str(params['EGOISTS'])+'.xml'
-        traci.start([sumoBinary, "-c", "network/grid.sumocfg", "--no-warnings", "--collision.action", "none", "--tripinfo-output", outFileName])
+        traci.start([sumoBinary, "-c", "network/grid.sumocfg", "--tripinfo-output", outFileName, "--no-warnings"])
         epsilon = epsilonDecay(params, episode)
         print("EPISODE: ", episode+1, "/", params['EPISODES'], " EPSILON: ", epsilon, " LEARNING RATE: ", params['LEARNING_RATE'])
         

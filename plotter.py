@@ -1,3 +1,4 @@
+from cProfile import label
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -12,19 +13,16 @@ def plotArr(array, title):
     plt.title(title)
     plt.show()
 
-def plotHistogram(arr, title):
-    bins = 100
-    plt.hist(arr, bins)
-    plt.title(title)
-    plt.show()
-
-
-def compareHistograms(arrays, titles):
-    bins = np.histogram(np.hstack((arrays[0],arrays[1])), bins=50)[1]
+def compareHistograms(bins, arrays, titles, quantiles):
+    bins = np.histogram(np.hstack(arrays), bins=bins)[1]
     for i in range(len(arrays)):
-        plt.hist(arrays[i], bins, alpha=0.5, label=titles[i])
+        _,_,c = plt.hist(arrays[i], bins, alpha=0.5, label=titles[i])
+        for q in np.percentile(arrays[i], quantiles):
+            plt.axvline(q, alpha=1, color = c[0].get_facecolor())
     plt.legend(loc='upper right')
-    title = " & ".join(titles)
+    title = 'Agent Waiting Times using Different Driving Policies for 5000 Vehicles'
     plt.title(title)
+    plt.ylabel('Frequency')
+    plt.xlabel('Agent Waiting Time')
     plt.show()
 

@@ -305,6 +305,10 @@ def pltResults(steps, waitingTime):
 
 #traCI control loop
 def run():
+    if options.nogui:
+        sumoBinary = checkBinary('sumo')
+    else:
+        sumoBinary = checkBinary('sumo-gui')
     steps = []
     waitingTime = []
     collisions = []
@@ -349,8 +353,5 @@ def run():
 if __name__ == "__main__":
     options = get_options()
     # check binary
-    if options.nogui:
-        sumoBinary = checkBinary('sumo')
-    else:
-        sumoBinary = checkBinary('sumo-gui')
+
     run()
