@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!-- generated on 2022-04-20 17:10:04 by Eclipse SUMO sumo Version 1.12.0
+<configuration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/sumoConfiguration.xsd">
+
+    <input>
+        <net-file value="network/net.net.xml"/>
+        <route-files value="network/grid.rou.xml"/>
+    </input>
+
+    <output>
+        <tripinfo-output value="temp/out_100.xml"/>
+    </output>
+
+    <report>
+        <no-warnings value="true"/>
+    </report>
+
+    <traci_server>
+        <remote-port value="50494"/>
+    </traci_server>
+
+</configuration>
+-->
+
+<tripinfos xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/tripinfo_file.xsd">
+    <tripinfo id="EGO_vl19" depart="0.00" departLane="7_0" departPos="5.10" departSpeed="0.00" departDelay="0.00" arrival="12.00" arrivalLane="0_0" arrivalPos="92.80" arrivalSpeed="10.00" duration="12.00" routeLength="194.90" waitingTime="0.00" waitingCount="0" stopTime="1.00" timeLoss="0.51" rerouteNo="0" devices="tripinfo_EGO_vl19" vType="car" speedFactor="1.16" vaporized="teleport"/>
+    <tripinfo id="EGO_vl22" depart="3.00" departLane="7_0" departPos="5.10" departSpeed="0.00" departDelay="3.00" arrival="19.00" arrivalLane="1_0" arrivalPos="92.80" arrivalSpeed="7.80" duration="16.00" routeLength="194.70" waitingTime="3.00" waitingCount="2" stopTime="1.00" timeLoss="4.45" rerouteNo="0" devices="tripinfo_EGO_vl22" vType="car" speedFactor="0.98" vaporized="teleport"/>
+    <tripinfo id="EGO_vl2" depart="0.00" departLane="6_0" departPos="5.10" departSpeed="0.00" departDelay="0.00" arrival="21.00" arrivalLane="0_0" arrivalPos="92.80" arrivalSpeed="10.00" duration="21.00" routeLength="189.53" waitingTime="0.00" waitingCount="0" stopTime="1.00" timeLoss="0.33" rerouteNo="0" devices="tripinfo_EGO_vl2" vType="car" speedFactor="1.01" vaporized=""/>
+    <tripinfo id="EGO_vl0" depart="0.00" departLane="5_0" departPos="5.10" departSpeed="0.00" departDelay="0.00" arrival="22.00" arrivalLane="3_0" arrivalPos="92.80" arrivalSpeed="10.00" duration="22.00" routeLength="189.53" waitingTime="0.00" waitingCount="0" stopTime="2.00" timeLoss="0.37" rerouteNo="0" devices="tripinfo_EGO_vl0" vType="car" speedFactor="1.06" vaporized=""/>
+    <tripinfo id="EGO_vl8" depart="0.00" departLane="4_0" departPos="5.10" departSpeed="0.00" departDelay="0.00" arrival="23.00" arrivalLane="2_0" arrivalPos="92.80" arrivalSpeed="10.00" duration="23.00" routeLength="194.70" waitingTime="0.00" waitingCount="0" stopTime="2.00" timeLoss="0.43" rerouteNo="0" devices="tripinfo_EGO_vl8" vType="car" speedFactor="0.94" vaporized=""/>
+    <tripinfo id="EGO_vl17" depart="5.00" departLane="4_0" departPos="5.10" departSpeed="0.00" departDelay="5.00" arrival="22.00" arrivalLane="2_0" arrivalPos="92.80" arrivalSpeed="7.53" duration="17.00" routeLength="194.70" waitingTime="4.00" waitingCount="3" stopTime="1.00" timeLoss="5.43" rerouteNo="0" devices="tripinfo_EGO_vl17" vType="car" speedFactor="0.94" vaporized="teleport"/>
+    <tripinfo id="EGO_vl3" depart="1.00" departLane="6_0" departPos="5.10" departSpeed="0.00" departDelay="1.00" arrival="24.00" arrivalLane="1_0" arrivalPos="92.80" arrivalSpeed="10.00" duration="23.00" routeLength="194.90" waitingTime="1.00" waitingCount="1" stopTime="1.00" timeLoss="2.51" rerouteNo="0" devices="tripinfo_EGO_vl3" vType="car" speedFactor="1.08" vaporized=""/>
+    <tripinfo id="EGO_vl21" depart="1.00" departLane="7_0" departPos="5.10" departSpeed="0.00" departDelay="1.00" arrival="25.00" arrivalLane="2_0" arrivalPos="92.80" arrivalSpeed="10.00" duration="24.00" routeLength="189.53" waitingTime="1.00" waitingCount="1" stopTime="2.00" timeLoss="2.33" rerouteNo="0" devices="tripinfo_EGO_vl21" vType="car" speedFactor="1.01" vaporized=""/>
+    <tripinfo id="EGO_vl1" depart="1.00" departLane="5_0" departPos="5.10" departSpeed="0.00" departDelay="1.00" arrival="26.00" arrivalLane="0_0" arrivalPos="92.80" arrivalSpeed="10.00" duration="25.00" routeLength="194.69" waitingTime="2.00" waitingCount="1" stopTime="1.00" timeLoss="3.43" rerouteNo="0" devices="tripinfo_EGO_vl1" vType="car" speedFactor="0.94" vaporized=""/>
+    <tripinfo id="EGO_vl9" depart="1.00" departLane="4_0" departPos="5.10" departSpeed="0.00" departDelay="1.00" arrival="26.00" arrivalLane="1_0" arrivalPos="92.80" arrivalSpeed="10.00" duration="25.00" routeLength="189.53" waitingTime="2.00" waitingCount="1" stopTime="1.00" timeLoss="3.87" rerouteNo="0" devices="tripinfo_EGO_vl9" vType="car" speedFactor="0.86" vaporized=""/>
+    <tripinfo id="EGO_vl4" depart="3.00" departLane="6_0" departPos="5.10" departSpeed="0.00" departDelay="3.00" arrival="28.00" arrivalLane="3_0" arrivalPos="92.80" arrivalSpeed="10.00" duration="25.00" routeLength="194.69" waitingTime="2.00" waitingCount="2" stopTime="1.00" timeLoss="3.47" rerouteNo="0" devices="tripinfo_EGO_vl4" vType="car" speedFactor="1.03" vaporized=""/>
+    <tripinfo id="EGO_vl10" depart="3.00" departLane="4_0" departPos="5.10" departSpeed="0.00" departDelay="3.00" arrival="28.00" arrivalLane="1_0" arrivalPos="92.80" arrivalSpeed="10.00" duration="25.00" routeLength="189.53" waitingTime="3.00" waitingCount="2" stopTime="1.00" timeLoss="4.44" rerouteNo="0" devices="tripinfo_EGO_vl10" vType="car" speedFactor="1.09" vaporized=""/>
+    <tripinfo id="EGO_vl37" depart="8.00" departLane="7_0" departPos="5.10" departSpeed="0.00" departDelay="8.00" arrival="28.00" arrivalLane="1_0" arrivalPos="92.80" arrivalSpeed="9.44" duration="20.00" routeLength="194.70" waitingTime="6.00" waitingCount="5" stopTime="1.00" timeLoss="8.51" rerouteNo="0" devices="tripinfo_EGO_vl37" vType="car" speedFactor="1.18" vaporized="teleport"/>
+    <tripinfo id="EGO_vl5" depart="3.00" departLane="5_0" departPos="5.10" departSpeed="0.00" departDelay="3.00" arrival="30.00" arrivalLane="0_0" arrivalPos="92.80" arrivalSpeed="10.00" duration="27.00" routeLength="194.69" waitingTime="3.00" waitingCount="2" stopTime="2.00" timeLoss="4.34" rerouteNo="0" devices="tripinfo_EGO_vl5" vType="car" speedFactor="0.83" vaporized=""/>
+    <tripinfo id="EGO_vl30" depart="5.00" departLane="7_0" departPos="5.10" departSpeed="0.00" departDelay="5.00" arrival="31.00" arrivalLane="2_0" arrivalPos="92.80" arrivalSpeed="10.00" duration="26.00" routeLength="189.53" waitingTime="4.00" waitingCount="3" stopTime="1.00" timeLoss="5.44" rerouteNo="0" devices="tripinfo_EGO_vl30" vType="car" speedFactor="1.18" vaporized=""/>
+    <tripinfo id="EGO_vl11" depart="8.00" departLane="5_0" departPos="5.10" departSpeed="0.00" departDelay="8.00" arrival="31.00" arrivalLane="0_0" arrivalPos="92.80" arrivalSpeed="8.21" duration="23.00" routeLength="194.69" waitingTime="8.00" waitingCount="5" stopTime="2.00" timeLoss="10.47" rerouteNo="0" devices="tripinfo_EGO_vl11" vType="car" speedFactor="1.03" vaporized="teleport"/>
+    <tripinfo id="EGO_vl6" depart="5.00" departLane="5_0" departPos="5.10" departSpeed="0.00" departDelay="5.00" arrival="33.00" arrivalLane="0_0" arrivalPos="92.80" arrivalSpeed="10.00" duration="28.00" routeLength="194.69" waitingTime="5.00" waitingCount="3" stopTime="1.00" timeLoss="6.48" rerouteNo="0" devices="tripinfo_EGO_vl6" vType="car" speedFactor="1.05" vaporized=""/>
+    <tripinfo id="EGO_vl12" depart="5.00" departLane="6_0" departPos="5.10" departSpeed="0.00" departDelay="5.00" arrival="33.00" arrivalLane="1_0" arrivalPos="92.80" arrivalSpeed="10.00" duration="28.00" routeLength="194.90" waitingTime="3.00" waitingCount="3" stopTime="4.00" timeLoss="4.51" rerouteNo="0" devices="tripinfo_EGO_vl12" vType="car" speedFactor="1.05" vaporized=""/>
+    <tripinfo id="EGO_vl36" depart="7.00" departLane="7_0" departPos="5.10" departSpeed="0.00" departDelay="7.00" arrival="34.00" arrivalLane="2_0" arrivalPos="92.80" arrivalSpeed="10.00" duration="27.00" routeLength="189.53" waitingTime="5.00" waitingCount="4" stopTime="1.00" timeLoss="6.30" rerouteNo="0" devices="tripinfo_EGO_vl36" vType="car" speedFactor="0.97" vaporized=""/>
+    <tripinfo id="EGO_vl23" depart="7.00" departLane="4_0" departPos="5.10" departSpeed="0.00" departDelay="7.00" arrival="35.00" arrivalLane="1_0" arrivalPos="92.80" arrivalSpeed="10.00" duration="28.00" routeLength="189.53" waitingTime="5.00" waitingCount="4" stopTime="1.00" timeLoss="6.95" rerouteNo="0" devices="tripinfo_EGO_vl23" vType="car" speedFactor="0.89" vaporized=""/>

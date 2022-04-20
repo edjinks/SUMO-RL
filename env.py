@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+#GENERATE NETWORK COMMAND FOR NETEDIT
 #netgenerate --g --grid.number=4 -L=1 --grid.length=100 --grid.attach-length 100 --lefthand
 
 import numpy as np
@@ -6,7 +7,7 @@ import pandas as pd
 import itertools
 import traci
 import sumolib
-from sumolib import checkBinary  # Checks for the binary in environ vars
+from sumolib import checkBinary
 
 def route_creator(add=True):
     routeNames = []
@@ -45,28 +46,29 @@ def computeEgotistReward(veh_id, action):
          reward += 100
     collisionNumber = traci.simulation.getCollidingVehiclesNumber()
     if collisionNumber != 0:
-        reward -= 5000
+        reward -= 500*collisionNumber
     return reward
+
 
 def computeProsocialReward(actions):
     reward = 0
-    vehicles = traci.vehicle.getIDList()
-    totalWait = 0
-    totalSpeed = 0
-    waits = []
-    for vehicle in vehicles:
-        wait = traci.vehicle.getAccumulatedWaitingTime(vehicle)
-        waits.append(wait)
-        totalWait += wait
-        totalSpeed += traci.vehicle.getSpeed(vehicle)
-    reward -= max(waits)-totalWait/len(vehicles)
-    reward += totalSpeed/len(vehicles)
-    reward -= totalWait/len(vehicles)
+    # vehicles = traci.vehicle.getIDList()
+    # totalWait = 0
+    # totalSpeed = 0
+    # waits = []
+    # for vehicle in vehicles:
+    #     wait = traci.vehicle.getAccumulatedWaitingTime(vehicle)
+    #     waits.append(wait)
+    #     totalWait += wait
+    #     totalSpeed += traci.vehicle.getSpeed(vehicle)
+    # reward -= max(waits)-totalWait/len(vehicles)
+    #reward += totalSpeed/len(vehicles)
+    # reward -= totalWait/len(vehicles)
     collisionNumber = traci.simulation.getCollidingVehiclesNumber()
     if collisionNumber == 0:
         reward += 10
-    reward = reward*(1+ sum([int(a) for a in actions.values()])/len(actions.items()))
-    reward -= 5000*collisionNumber
+    reward = sum([int(a) for a in actions.values()])
+    reward -= 50*collisionNumber
     return reward
 
 def computeReward(agent, actions):
@@ -253,7 +255,7 @@ def run(params, gui=False):
 
     for episode in range(int(params['EPISODES'])):
         rewards = 0
-        outFileName = 'out_'+str(params['EGOISTS'])+'.xml'
+        outFileName = 'temp/out_'+str(params['EGOISTS'])+'.xml'
         traci.start([sumoBinary, "-c", "network/grid.sumocfg", "--tripinfo-output", outFileName, "--no-warnings"])
         epsilon = epsilonDecay(params, episode)
         print("EPISODE: ", episode+1, "/", params['EPISODES'], " EPSILON: ", epsilon, " LEARNING RATE: ", params['LEARNING_RATE'])
