@@ -44,9 +44,9 @@ def computeEgotistReward(veh_id, action):
     reward -= ownWait
     if action == '1':
          reward += 100
-    collisionList = traci.simulation.getCollidingVehiclesIDList()
-    if veh_id in collisionList:
-        reward -= 500
+    collisionNumber = traci.simulation.getCollidingVehiclesNumber()
+    if collisionNumber != 0:
+        reward -= 500*collisionNumber
     return reward
 
 
@@ -159,7 +159,7 @@ def getLaneLeaders():
             leaders.update({lane:leader})
     return leaders
 
-def computeRLActions(states, q_table, epsilon):
+def computeRLActions(states, q_table, epsilon, params, rewards):
     actions = {}
     for agent in states.keys():
         exploreExploit = np.random.random()
@@ -169,17 +169,15 @@ def computeRLActions(states, q_table, epsilon):
         else:
             action = np.random.choice(["1", "0"])
         actions.update({agent: action})
-    return actions
-
-def updateTable(actions, q_table, states, new_states, params, rewards):
     if len(actions.items()) != 0:
+        new_states = estimateNewStates(actions)
         for agent in states.keys():
             if agent not in new_states.keys():
                 new_state = states[agent]
             else:
                 new_state = new_states[agent]
             q_table, rewards = update_Q_value(agent, states[agent], actions, new_state, q_table, params, rewards)    
-    return q_table, rewards
+    return actions, q_table, rewards
 
 def getStates(leadersAtJunction):
     states = {}
@@ -263,19 +261,12 @@ def run(params, gui=False):
         print("EPISODE: ", episode+1, "/", params['EPISODES'], " EPSILON: ", epsilon, " LEARNING RATE: ", params['LEARNING_RATE'])
         
         step = 0
-        actions = None
-        states = None
         addVehicles(route_creator(), params['EGOISTS'], params['PROSOCIALISTS'])
         traci.simulationStep()
         while traci.simulation.getMinExpectedNumber() > 0:
             traci.simulationStep()
-            traci.simulationStep()
-            if actions and states:
-                dataFrame, rewards = updateTable(actions, dataFrame, states, new_states, params, rewards)
             states = getStates(getLeadersAtJunctions(getLaneLeaders()))
-            actions = computeRLActions(states, dataFrame, epsilon)
-            if len(actions) != 0:
-                new_states = estimateNewStates(actions)
+            actions, dataFrame, rewards = computeRLActions(states, dataFrame, epsilon, params, rewards)
             doActions(actions)
             step += 1
         averageReward = rewards/(params['EGOISTS']+params['PROSOCIALISTS'])
