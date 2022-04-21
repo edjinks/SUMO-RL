@@ -169,17 +169,17 @@ def policyInspect(policyCSV):
     policy = pd.read_csv(policyCSV)
     run(policy, None, 'temp/Out.xml', 100, 0, True)
 
-def comparePolicies(policies, titles):
-    quantiles = [0, 0, 95,99]
-    analysisString = "{}: Skew: {}, Kurtois Skew: {}, Quantles: {}%: {}, {}%: {}, {}%: {}, {}%: {}"
+def comparePolicies(policies, titles, bins=40):
+    quantiles = [90, 95,99]
+    analysisString = "{}: Skew: {}, Kurtois Skew: {}, Quantles: {}%: {}, {}%: {}, {}%: {}"
     for i in range(len(policies)):
         q = np.percentile(policies[i], quantiles)
-        print(analysisString.format(titles[i], stats.skew(policies[i]), stats.kurtosis(policies[i]), quantiles[0], q[0], quantiles[1], q[1], quantiles[2], q[2], quantiles[3], q[3]))
-    plotter.compareHistograms(50, policies, titles, quantiles)
+        print(analysisString.format(titles[i], stats.skew(policies[i]), stats.kurtosis(policies[i]), quantiles[0], q[0], quantiles[1], q[1], quantiles[2], q[2]))
+    plotter.compareHistograms(bins, policies, titles, quantiles)
 
-def runMixedPercentages(egoPolicy, proPolicy, vehNum, routeOrder):
+def runMixedPercentages(min, max, egoPolicy, proPolicy, vehNum, routeOrder):
     collisionsDict = {}
-    for i in range (11):
+    for i in range (min, max+1):
         egoNum = i*10
         outName = "policyTrials/ego"+str(egoNum)+'Mixed.csv'
         df, collisions = mixedPolicy(egoPolicy, proPolicy, int(vehNum*egoNum/100), int(vehNum*(100-egoNum)/100), routeOrder, False, outName)
@@ -210,59 +210,87 @@ def readMixedPercentages(min, max, name):
         mixedPolicies.append(file)
     return mixedPolicies
 
+def resultsTableRow(arr, name):
+    #### OUTPUT: Name | Mean | Standard Deviation | 50th% | 90th% | 95% | 99th%
+    row = {'Policy':name, 'Skew':stats.skew(arr), 'Kurtois':stats.kurtosis(arr), 'Mean':np.mean(arr), 'Std':np.std(arr), 'Median':np.percentile(arr,50), '90th':np.percentile(arr, 90), '95th':np.percentile(arr, 95), '99th':np.percentile(arr, 99)}
+    return row
+
+def analysisTable(policies, names):
+    table = []
+    for i in range(len(policies)):
+        table.append(resultsTableRow(policies[i], names[i]))
+    table = pd.DataFrame(table)
+    table.set_index('Policy')
+    return table
+
 #GUI INSPECT POLICY
 # run(pd.read_csv('policies/egoPolicy20.csv'), None, 'temp/Out.xml', 500, 0, True, None)
 
 vehNumber = 5000
 
 ### CHOOSE A NEW ROUTE ######
-routeOrder = []
-routeNames = route_creator(False)
-for _ in range(vehNumber):
-    routeOrder.append(np.random.choice(routeNames))
-savedRoute = pd.DataFrame({'routeOrder': routeOrder})
-savedRoute.to_csv('policyTrials/routeOrder.csv')
+# routeOrder = []
+# routeNames = route_creator(False)
+# for _ in range(vehNumber):
+#     routeOrder.append(np.random.choice(routeNames))
+# savedRoute = pd.DataFrame({'routeOrder': routeOrder})
+# savedRoute.to_csv('policyTrials/routeOrder.csv')
 
-routeOrderDF = pd.read_csv('policyTrials/routeOrder.csv')
-routeOrder = list(routeOrderDF['routeOrder'])
+# routeOrderDF = pd.read_csv('policyTrials/routeOrder.csv')
+# routeOrder = list(routeOrderDF['routeOrder'])
 
-egoPolicy = 'policies/egoPolicy.csv'
-proPolicy =  'policies/proPolicy.csv'
+# egoPolicy = 'policies/egoPolicy.csv'
+# proPolicy =  'policies/proPolicy.csv'
 
 
-# #### UPDATE RESULTS ######
-egoPolicyDF = singlePolicy(egoPolicy, vehNumber, 'policyTrials/egoOUT.csv', routeOrder)
-proPolicyDF = singlePolicy(proPolicy, vehNumber, 'policyTrials/proOUT.csv', routeOrder)
-fcfsPolicyDF = firstComefirstServed(_, _, vehNumber, 0, False, routeOrder)
-gwrDF = giveWayToRight(vehNumber, False, routeOrder)
+# # #### UPDATE RESULTS ######
+# egoPolicyDF = singlePolicy(egoPolicy, vehNumber, 'policyTrials/egoOUT.csv', routeOrder)
+# proPolicyDF = singlePolicy(proPolicy, vehNumber, 'policyTrials/proOUT.csv', routeOrder)
+# fcfsPolicyDF = firstComefirstServed(_, _, vehNumber, 0, False, routeOrder)
+# gwrDF = giveWayToRight(vehNumber, False, routeOrder)
+# runMixedPercentages(0, 10, egoPolicy, proPolicy, vehNumber, routeOrder)
+# runMixedPercentagesFCFSSwap(0, 10, vehNumber, routeOrder, pd.read_csv(egoPolicy), pd.read_csv(proPolicy))
 
+###### READ POLICIES
 egoPolicyDF = pd.read_csv('policyTrials/egoOUT.csv')['wait']
 proPolicyDF = pd.read_csv('policyTrials/proOUT.csv')['wait']
 fcfsPolicyDF = pd.read_csv('policyTrials/fcfsOUT.csv')['wait']
 gwrPolicyDF = pd.read_csv('policyTrials/gwrOUT.csv')['wait']
 
-runMixedPercentages(egoPolicy, proPolicy, vehNumber, routeOrder)
-runMixedPercentagesFCFSSwap(0, 10, vehNumber, routeOrder, pd.read_csv(egoPolicy), pd.read_csv(proPolicy))
 
+# ######## EXPERIMENT 1: EGO vs GWR, FCFS
+# comparePolicies([egoPolicyDF, gwrPolicyDF, fcfsPolicyDF], ['ego', 'gwr', 'fcfs'])
 
-######## EXPERIMENT 1: EGO vs GWR, FCFS
-comparePolicies([egoPolicyDF, gwrPolicyDF, fcfsPolicyDF], ['ego', 'gwr', 'fcfs'])
+# ######### EXPERIMENT 2: PRO vs GWR, FCFS
+# comparePolicies([proPolicyDF, gwrPolicyDF, fcfsPolicyDF], ['pro', 'gwr', 'fcfs'])
 
-######### EXPERIMENT 2: PRO vs GWR, FCFS
-comparePolicies([proPolicyDF, gwrPolicyDF, fcfsPolicyDF], ['pro', 'gwr', 'fcfs'])
-
-######### EXPERIMENT 3: EGO vs PRO
-comparePolicies([egoPolicyDF, proPolicyDF], ['ego', 'pro'])
-comparePolicies([egoPolicyDF, proPolicyDF, gwrPolicyDF, fcfsPolicyDF], ['ego', 'pro', 'gwr', 'fcfs'])
+# ######### EXPERIMENT 3: EGO vs PRO
+# comparePolicies([egoPolicyDF, proPolicyDF], ['ego', 'pro'])
+# comparePolicies([egoPolicyDF, proPolicyDF, gwrPolicyDF, fcfsPolicyDF], ['ego', 'pro', 'gwr', 'fcfs'])
 
 ######## EXPERIMENT 4: MIXED at VARIOUS PERCENTAGES
-comparePolicies(readMixedPercentages(0, 10, 'Mixed'),[str(i*10) for i in range(11)]) 
-
+#omparePolicies(readMixedPercentages(0, 10, 'Mixed'),[str(i*10) for i in range(11)]) 
+# df = pd.read_csv('policyTrials/collisions.csv')
+# print(df.iloc[0])
+# plotter.plotArr(df.iloc[0][1::], 'Collisions with Percentage of Ego Vehicles', 'Percentage of Ego Vehicles', 'Collisions per 5000 vehicles')
 ######## EXPERIMENT 5: MIXED OPTIMAL? vs FCFS, GWR
 #comparePolicies([ego80mixedPolicyDF, gwrPolicyDF, fcfsPolicyDF], ['optimalPolicy', 'gwr', 'fcfs'])
 
-######## EXPERIMENT 6: FCFSswap AT VARIOUS PERCENTAGES
-comparePolicies(readMixedPercentages(0, 10, 'FCFSSwap'),[str(i*10) for i in range(0,11)]) 
+# ######## EXPERIMENT 6: FCFSswap AT VARIOUS PERCENTAGES
+# comparePolicies(readMixedPercentages(0, 10, 'FCFSSwap'),[str(i*10) for i in range(0,11)]) 
 
-######### EXPERIMENT 7: COMPARE FCFSSwap TO FCFS and MIXED 
-comparePolicies(readMixedPercentages(4, 8, 'FCFSSwap')+[fcfsPolicyDF,egoPolicyDF,proPolicyDF], [str(i*10) for i in range(4,9)]+['fcfs', 'ego', 'pro'])
+# ######### EXPERIMENT 7: COMPARE FCFSSwap TO FCFS and MIXED 
+# comparePolicies(readMixedPercentages(4, 8, 'FCFSSwap')+[fcfsPolicyDF,egoPolicyDF,proPolicyDF], [str(i*10) for i in range(4,9)]+['fcfs', 'ego', 'pro'])
+# df = pd.read_csv('policyTrials/swaps.csv')
+# print(df.iloc[0])
+# plotter.plotArr(df.iloc[0][1::], 'Swaps with Percentage of Ego Vehicles', 'Percentage of Ego Vehicles', 'Swaps per 5000 vehicles')
+
+mixedAnalysis = analysisTable(readMixedPercentages(0, 10, 'Mixed'),[str(i*10) for i in range(0,11)]) 
+df = pd.read_csv('policyTrials/collisions.csv')
+mixedAnalysis['Collisions'] = np.array(df.iloc[0][1::])
+print(mixedAnalysis)
+
+fcfsSwapAnalysis = analysisTable(readMixedPercentages(0, 10, 'FCFSSwap'),[str(i*10) for i in range(0,11)]) 
+df = pd.read_csv('policyTrials/swaps.csv')
+fcfsSwapAnalysis['Swaps'] = np.array(df.iloc[0][1::])
+print(fcfsSwapAnalysis)

@@ -3,13 +3,14 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 ############RESULTS PLOTTING######################
-
-def plotArr(array, title):
-    x = np.array([x for x in range(0,len(array))])
+def plotArr(array, title, xlab, ylab):
+    x = np.array([x*10 for x in range(0,len(array))])
     y = np.array(array)
     plt.plot(x, y, 'o')
     m, b = np.polyfit(x, y, 1)
     plt.plot(x, m*x+b)
+    plt.ylabel(ylab)
+    plt.xlabel(xlab)
     plt.title(title)
     plt.show()
 
