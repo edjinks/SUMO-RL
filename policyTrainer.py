@@ -41,7 +41,7 @@ def egoTraining(eps, gui, veh):
         'START_EPSILON_DECAY':0.8,
         'END_EPSILON_DECAY':0.1,
         'EPISODES':eps,
-        'LEARNING_RATE':0.1,
+        'LEARNING_RATE':0.2,
         'DISCOUNT_FACTOR':0.5,
     }
     return env.run(params, gui)
@@ -55,7 +55,7 @@ def proTraining(eps, gui, veh):
         'START_EPSILON_DECAY':0.8,
         'END_EPSILON_DECAY':0.1,
         'EPISODES':eps,
-        'LEARNING_RATE':0.1,
+        'LEARNING_RATE':0.2,
         'DISCOUNT_FACTOR':0.5,
     }
     return env.run(params, gui)

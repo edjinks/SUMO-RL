@@ -67,8 +67,8 @@ def computeProsocialReward(actions):
     collisionNumber = traci.simulation.getCollidingVehiclesNumber()
     if collisionNumber == 0:
         reward += 10
-    reward = sum([int(a) for a in actions.values()])
-    reward -= 50*collisionNumber
+    reward = reward*sum([int(a) for a in actions.values()])
+    reward -= 150*collisionNumber
     return reward
 
 def computeReward(agent, actions):
