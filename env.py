@@ -68,7 +68,7 @@ def computeProsocialReward(actions):
     if collisionNumber == 0:
         reward += 10
     reward = reward*sum([int(a) for a in actions.values()])
-    reward -= 150*collisionNumber
+    reward -= 500*collisionNumber
     return reward
 
 def computeReward(agent, actions):
@@ -120,14 +120,14 @@ def estimateNewStates(actions):
         oldAgentsNewStates.update({oldAgent:state})
     return oldAgentsNewStates
 
-def update_Q_value(agent, state, actions, new_state, q_table, params, rewards):
+def update_Q_value(agent, state, actions, new_state, q_table, params, rewards,epsilon):
     action = actions[agent]
     current_q = q_table[state][action]
     best_predicted_q = q_table[new_state].max()
     LEARNING_RATE = params['LEARNING_RATE']
     reward = computeReward(agent, actions)
     rewards += reward
-    q_table[state][action] = (1-LEARNING_RATE)*current_q + LEARNING_RATE*(reward+params['DISCOUNT_FACTOR']*best_predicted_q)
+    q_table[state][action] = (1-LEARNING_RATE)*current_q + LEARNING_RATE*epsilon*(reward+params['DISCOUNT_FACTOR']*best_predicted_q)
     return q_table, rewards
 
 def init_Q_table():
@@ -171,14 +171,14 @@ def computeRLActions(states, q_table, epsilon):
         actions.update({agent: action})
     return actions
 
-def updateTable(actions, q_table, states, new_states, params, rewards):
+def updateTable(actions, q_table, states, new_states, params, rewards, epsilon):
     if len(actions.items()) != 0:
         for agent in states.keys():
             if agent not in new_states.keys():
                 new_state = states[agent]
             else:
                 new_state = new_states[agent]
-            q_table, rewards = update_Q_value(agent, states[agent], actions, new_state, q_table, params, rewards)    
+            q_table, rewards = update_Q_value(agent, states[agent], actions, new_state, q_table, params, rewards, epsilon)    
     return q_table, rewards
 
 def getStates(leadersAtJunction):
@@ -271,7 +271,7 @@ def run(params, gui=False):
             traci.simulationStep()
             traci.simulationStep()
             if actions and states:
-                dataFrame, rewards = updateTable(actions, dataFrame, states, new_states, params, rewards)
+                dataFrame, rewards = updateTable(actions, dataFrame, states, new_states, params, rewards, epsilon)
             states = getStates(getLeadersAtJunctions(getLaneLeaders()))
             actions = computeRLActions(states, dataFrame, epsilon)
             if len(actions) != 0:
