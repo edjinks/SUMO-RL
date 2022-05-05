@@ -1,6 +1,6 @@
 # SUMO-ReinforcementLearning
 
-Edward Jinks - Computer Scince Bsc Dissertation - 2022
+Edward Jinks - Computer Scince BSc Dissertation - 2022
 
 This is the source code to model Egoism and Altruism in Multiagent Systems.
 
