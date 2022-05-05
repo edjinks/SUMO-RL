@@ -2,7 +2,7 @@ import pandas as pd
 import plotter
 
 
-df = pd.read_csv('learningData/LEARNING_EXP_1_20220423-070405.csv')
+df = pd.read_csv('learningData/LEARNING_EXP_2_20220427-202222.csv')
 
 plotter.plotArr(df['Rewards'], 'Average Rewards', '', '')
 plotter.plotArr(df['WaitTime'], 'Average Wait Time', '', '')

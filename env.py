@@ -8,6 +8,7 @@ import itertools
 import traci
 import sumolib
 from sumolib import checkBinary
+import random
 
 def route_creator(add=True):
     routeNames = []
@@ -22,21 +23,26 @@ def route_creator(add=True):
                 routeNames.append(name)
     return routeNames
 
-def addVehicles(routeNames, numEgoists, numProsocialists, routeOrder = None):
-    vehNames = []
-    for i in range(numEgoists):
-        vehNames.append("EGO_vl"+str(i))
-    for j in range(numProsocialists):
-        vehNames.append("PRO_vl"+str(j))
+def addVehicles(routeNames, numEgoists, numProsocialists, routeOrder = None, vehOrder=None, add=True):
+    if vehOrder is None:
+        vehNames = []
+        for i in range(numEgoists):
+            vehNames.append("EGO_vl"+str(i))
+        for j in range(numProsocialists):
+            vehNames.append("PRO_vl"+str(j))
+        random.shuffle(vehNames)
+    else:
+        vehNames = vehOrder
     for j in range(len(vehNames)):
         if routeOrder is not None:
             routeName = str(routeOrder[j])
         else:
             routeName = np.random.choice(routeNames)
         stopEdge = str(list(routeName)[0])
-        traci.vehicle.add(vehNames[j], routeName, "car")
-        traci.vehicle.setStop(vehNames[j], edgeID=stopEdge, laneIndex=0, pos=90, duration=1000.0) #stops for 1 step at junction to make decision/detect being leader at junction
-
+        if add:
+            traci.vehicle.add(vehNames[j], routeName, "car")
+            traci.vehicle.setStop(vehNames[j], edgeID=stopEdge, laneIndex=0, pos=90, duration=1000.0) #stops for 1 step at junction to make decision/detect being leader at junction
+    return vehNames
 
 def computeEgotistReward(veh_id, action):
     reward = 0
@@ -49,21 +55,8 @@ def computeEgotistReward(veh_id, action):
         reward -= 500
     return reward
 
-
 def computeProsocialReward(actions):
     reward = 0
-    # vehicles = traci.vehicle.getIDList()
-    # totalWait = 0
-    # totalSpeed = 0
-    # waits = []
-    # for vehicle in vehicles:
-    #     wait = traci.vehicle.getAccumulatedWaitingTime(vehicle)
-    #     waits.append(wait)
-    #     totalWait += wait
-    #     totalSpeed += traci.vehicle.getSpeed(vehicle)
-    # reward -= max(waits)-totalWait/len(vehicles)
-    #reward += totalSpeed/len(vehicles)
-    # reward -= totalWait/len(vehicles)
     collisionNumber = traci.simulation.getCollidingVehiclesNumber()
     if collisionNumber == 0:
         reward += 10
